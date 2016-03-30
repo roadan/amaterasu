@@ -43,6 +43,8 @@ class JobScheduler extends AmaterasuScheduler {
 
   private val offersToTaskIds: concurrent.Map[String, String] = new ConcurrentHashMap[String, String].asScala
 
+  private val slaveExecutorsMap: concurrent.Map[SlaveID, ExecutorInfo] = new ConcurrentHashMap[SlaveID, ExecutorInfo]().asScala
+
   def error(driver: SchedulerDriver, message: String) {}
 
   def executorLost(driver: SchedulerDriver, executorId: ExecutorID, slaveId: SlaveID, status: Int) {}
@@ -113,11 +115,12 @@ class JobScheduler extends AmaterasuScheduler {
             .setValue(s"$ACTION_COMMAND -Djava.library.path=/usr/lib --action-type ${actionData.actionType} --src ${actionData.src}")
             .addUris(URI.newBuilder.setValue(fsUtil.getJarUrl()).setExecutable(false))
 
-          val executor = ExecutorInfo
+          val executor = slaveExecutorsMap.getOrElseUpdate(offer.getSlaveId, ExecutorInfo
             .newBuilder
             .setName(taskId.getValue)
             .setExecutorId(ExecutorID.newBuilder().setValue("1234"))
             .setCommand(command)
+            .build())
 
           val actionTask = TaskInfo
             .newBuilder
