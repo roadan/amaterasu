@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString
 import io.shinto.amaterasu.Logging
 import io.shinto.amaterasu.configuration.environments.Environment
 import io.shinto.amaterasu.configuration.{ ClusterConfig, SparkConfig }
-import io.shinto.amaterasu.execution.actions.runners.spark.SparkScalaRunner
+import org.apache.spark.repl.runners.spark.SparkScalaRunner
 import org.apache.mesos.Protos._
 import org.apache.mesos.{ MesosExecutorDriver, ExecutorDriver, Executor }
 import org.apache.spark.repl.Main
@@ -60,13 +60,14 @@ class ActionsExecutor extends Executor with Logging {
 
     try {
       val env = Environment()
-      env.workingDir = "s3://AKIAI7ZNKZUD5CEBISGA:yv7Mm6dZhPbAEvdYkJx9I9D3XD5PSHjWGPtn94RZ@amaterasu/work/"
+      //env.workingDir = "s3n://AKIAJRS2MF7ZFKYB4G3A:wkYExzDuLLkGQYGvOA0slbOHzF38PVI9DyT+tSph@amaterasu/work_new/"
+      env.workingDir = "file:///tmp/worky/"
       env.master = "mesos://192.168.33.11:5050"
 
-      if (sc == null)
-        sc = createSparkContext(env, sparkAppName)
+      //      if (sc == null)
+      //        sc = createSparkContext(env, sparkAppName)
 
-      sc.getConf.getAll
+      //sc.getConf.getAll
       val sparkScalaRunner = SparkScalaRunner(env, jobId, sc)
       sparkScalaRunner.executeSource(actionSource, actionName)
       driver.sendStatusUpdate(TaskStatus.newBuilder()
@@ -80,21 +81,6 @@ class ActionsExecutor extends Executor with Logging {
         System.exit(1)
       }
     }
-  }
-
-  def createSparkContext(env: Environment, jobId: String): SparkContext = {
-
-    System.setProperty("hadoop.home.dir", "/home/hadoop/hadoop")
-    val conf = new SparkConf(true)
-      .setMaster(env.master)
-      .setAppName(jobId)
-      .set("spark.executor.uri", "http://192.168.33.11:8000/spark-1.6.2-bin-hadoop2.4.tgz")
-      .set("spark.io.compression.codec", "lzf")
-    // .set("hadoop.home.dir", "/home/hadoop/hadoop")
-    //      .set("spark.repl.class.uri", Main.getClass().getName) //TODO: :\ check this
-    //      .set("spark.submit.deployMode", "client")
-    new SparkContext(conf)
-
   }
 
 }
