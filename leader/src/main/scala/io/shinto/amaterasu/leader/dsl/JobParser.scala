@@ -35,13 +35,11 @@ object JobParser {
     * @param client
     * @return
     */
-  def parse(
-    jobId: String,
-    maki: String,
-    actionsQueue: BlockingQueue[ActionData],
-    client: CuratorFramework,
-    attempts: Int
-  ): JobManager = {
+  def parse(jobId: String,
+            maki: String,
+            actionsQueue: BlockingQueue[ActionData],
+            client: CuratorFramework,
+            attempts: Int): JobManager = {
 
     val mapper = new ObjectMapper(new YAMLFactory())
 
@@ -69,13 +67,11 @@ object JobParser {
     * @param previous the previous action, this is used in order to add the current action
     *                 to the nextActionIds
     */
-  def parseActions(
-    actions: Seq[JsonNode],
-    manager: JobManager,
-    actionsQueue: BlockingQueue[ActionData],
-    attempts: Int,
-    previous: Action
-  ): Unit = {
+  def parseActions(actions: Seq[JsonNode],
+                   manager: JobManager,
+                   actionsQueue: BlockingQueue[ActionData],
+                   attempts: Int,
+                   previous: Action): Unit = {
 
     if (actions.isEmpty)
       return
@@ -118,45 +114,47 @@ object JobParser {
 
   }
 
-  def parseSequentialAction(
-    action: JsonNode,
-    jobId: String,
-    actionsQueue: BlockingQueue[ActionData],
-    client: CuratorFramework,
-    attempts: Int
-  ): SequentialAction = {
+  def parseSequentialAction(action: JsonNode,
+                            jobId: String,
+                            actionsQueue: BlockingQueue[ActionData],
+                            client: CuratorFramework,
+                            attempts: Int): SequentialAction = {
 
     SequentialAction(
       action.path("name").asText,
       action.path("file").asText,
-      action.path("group").asText,
-      action.path("type").asText,
+      action.path("runner").path("group").asText,
+      action.path("runner").path("type").asText,
       jobId,
       actionsQueue,
       client,
-      attempts
+      attempts,
+      parseExports(action.path("name"))
     )
 
   }
 
-  def parseErrorAction(
-    action: JsonNode,
-    jobId: String,
-    parent: String,
-    actionsQueue: BlockingQueue[ActionData],
-    client: CuratorFramework
-  ): SequentialAction = {
+  def parseErrorAction(action: JsonNode,
+                       jobId: String,
+                       parent: String,
+                       actionsQueue: BlockingQueue[ActionData],
+                       client: CuratorFramework): SequentialAction = {
 
     ErrorAction(
       action.path("name").asText,
       action.path("file").asText,
       parent,
-      action.path("group").asText,
-      action.path("type").asText,
+      action.path("runner").path("group").asText,
+      action.path("runner").path("type").asText,
       jobId,
       actionsQueue,
       client
     )
 
   }
+
+  def parseExports(exports: JsonNode): Map[String, String] = {
+    exports.fieldNames().asScala.map(e => e -> exports.path(e).asText).toMap
+  }
+
 }

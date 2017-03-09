@@ -25,7 +25,8 @@ class SparkScalaRunner(var env: Environment,
                        var interpreter: SparkIMain,
                        var outStream: ByteArrayOutputStream,
                        var sc: SparkContext,
-                       var notifier: Notifier) extends Logging with AmaterasuRunner {
+                       var notifier: Notifier,
+                       val exports: Map[String, String]) extends Logging with AmaterasuRunner {
 
   override def getIdentifier = "scala"
 
@@ -73,25 +74,27 @@ class SparkScalaRunner(var env: Environment,
 
               //val resultName = interpreter.prevRequestList.last.value.name.toString
               val resultName = interpreter.prevRequestList.last.termNames.last
+              if (exports.contains(resultName.toString)) {
 
-              if (result != null) {
-                result match {
-                  case df: DataFrame =>
-                    log.debug(s"persisting DataFrame: $resultName")
-                    interpreter.interpret(s"""$resultName.write.mode(SaveMode.Overwrite).parquet("${env.workingDir}/$jobId/$actionName/$resultName")""")
-                    log.debug(outStream.toString)
-                    log.debug(s"persisted DataFrame: $resultName")
+                if (result != null) {
+                  result match {
+                    case df: DataFrame =>
+                      log.debug(s"persisting DataFrame: $resultName")
+                      interpreter.interpret(s"""$resultName.write.mode(SaveMode.Overwrite).parquet("${env.workingDir}/$jobId/$actionName/$resultName")""")
+                      log.debug(outStream.toString)
+                      log.debug(s"persisted DataFrame: $resultName")
 
-                  case rdd: RDD[_] =>
-                    log.debug(s"persisting RDD: $resultName")
-                    interpreter.interpret(s"""$resultName.saveAsObjectFile("${env.workingDir}/$jobId/$actionName/$resultName")""")
-                    log.debug(outStream.toString)
-                    log.debug(s"persisted RDD: $resultName")
+                    case rdd: RDD[_] =>
+                      log.debug(s"persisting RDD: $resultName")
+                      interpreter.interpret(s"""$resultName.saveAsObjectFile("${env.workingDir}/$jobId/$actionName/$resultName")""")
+                      log.debug(outStream.toString)
+                      log.debug(s"persisted RDD: $resultName")
 
-                  case _ => println(result)
+                    case _ => println(result)
+                  }
                 }
-              }
 
+              }
             case Results.Error =>
               log.debug("Results.Error")
               val err = outStream.toString
@@ -154,57 +157,10 @@ object SparkScalaRunner extends Logging {
             sparkContext: SparkContext,
             outStream: ByteArrayOutputStream,
             notifier: Notifier,
-            jars: Seq[String]): SparkScalaRunner = {
-    /*<<<<<<< pyspark-support
+            jars: Seq[String],
+            exports: Map[String, String]): SparkScalaRunner = {
 
-        val result = new SparkScalaRunner()
-        result.env = env
-        result.jobId = jobId
-        result.outStream = new ByteArrayOutputStream()
-        result.notifier = notifier
-
-        val intp = ReplUtils.creteInterprater(env, jobId, result.outStream, jars)
-
-        result.interpreter = intp._1
-
-        result.sc = createSparkContext(env, sparkAppName, intp._2, jars)
-
-        result.initializeAmaContext(env)
-        result
-      }
-
-      def createSparkContext(env: Environment, sparkAppName: String, classServerUri: String, jars: Seq[String]): SparkContext = {
-
-        log.debug(s"creating SparkContext with master ${env.master}")
-
-        val conf = new SparkConf(true)
-          .setMaster(env.master)
-          .setAppName(sparkAppName)
-          .set("spark.executor.uri", s"http://${sys.env("AMA_NODE")}:8000/spark-1.6.1-2.tgz")
-          .set("spark.driver.memory", "512m")
-          .set("spark.repl.class.uri", classServerUri)
-          .set("spark.mesos.coarse", "true")
-          .set("spark.executor.instances", "2")
-          .set("spark.cores.max", "5")
-          .set("spark.hadoop.validateOutputSpecs", "false")
-          .setExecutorEnv('PYTHONPATH',
-        val sc = new SparkContext(conf)
-        for (jar <- jars) {
-          sc.addJar(jar) // and this is how my childhood was ruined :(
-        }
-        val hc = sc.hadoopConfiguration
-
-        if (!sys.env("AWS_ACCESS_KEY_ID").isEmpty &&
-          !sys.env("AWS_SECRET_ACCESS_KEY").isEmpty) {
-
-          hc.set("fs.s3n.impl", "org.apache.hadoop.fs.s3native.NativeS3FileSystem")
-          hc.set("fs.s3n.awsAccessKeyId", sys.env("AWS_ACCESS_KEY_ID"))
-          hc.set("fs.s3n.awsSecretAccessKey", sys.env("AWS_SECRET_ACCESS_KEY"))
-        }
-        sc
-
-    =======*/
-    new SparkScalaRunner(env, jobId, ReplUtils.getOrCreateScalaInterperter(outStream, jars), outStream, sparkContext, notifier)
+    new SparkScalaRunner(env, jobId, ReplUtils.getOrCreateScalaInterperter(outStream, jars), outStream, sparkContext, notifier, exports)
 
   }
 

@@ -1,12 +1,11 @@
 package io.shinto.amaterasu.executor.mesos.executors
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream }
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import io.shinto.amaterasu.common.dataobjects.{ExecData, TaskData}
 import io.shinto.amaterasu.common.logging.Logging
-import io.shinto.amaterasu.sdk.AmaterasuRunner
 import org.apache.mesos.Protos._
 import org.apache.mesos.protobuf.ByteString
 import org.apache.mesos.{Executor, ExecutorDriver, MesosExecutorDriver}
@@ -26,8 +25,6 @@ class ActionsExecutor extends Executor with Logging {
   var sc: SparkContext = _
   var jobId: String = _
   var actionName: String = _
-  //  var sparkScalaRunner: SparkScalaRunner = _
-  //  var pySparkRunner: PySparkRunner = _
   var notifier: MesosNotifier = _
   var providersFactory: ProvidersFactory = _
 
@@ -35,7 +32,7 @@ class ActionsExecutor extends Executor with Logging {
   mapper.registerModule(DefaultScalaModule)
 
 
-  override def shutdown(driver: ExecutorDriver) = {
+  override def shutdown(driver: ExecutorDriver): Unit = {
 
   }
 
@@ -43,11 +40,11 @@ class ActionsExecutor extends Executor with Logging {
 
   override def disconnected(driver: ExecutorDriver) = ???
 
-  override def reregistered(driver: ExecutorDriver, slaveInfo: SlaveInfo) = {
+  override def reregistered(driver: ExecutorDriver, slaveInfo: SlaveInfo): Unit = {
     this.executorDriver = driver
   }
 
-  override def error(driver: ExecutorDriver, message: String) = {
+  override def error(driver: ExecutorDriver, message: String): Unit = {
 
     val status = TaskStatus.newBuilder
       .setData(ByteString.copyFromUtf8(message))
@@ -59,7 +56,7 @@ class ActionsExecutor extends Executor with Logging {
 
   override def frameworkMessage(driver: ExecutorDriver, data: Array[Byte]) = ???
 
-  override def registered(driver: ExecutorDriver, executorInfo: ExecutorInfo, frameworkInfo: FrameworkInfo, slaveInfo: SlaveInfo) = {
+  override def registered(driver: ExecutorDriver, executorInfo: ExecutorInfo, frameworkInfo: FrameworkInfo, slaveInfo: SlaveInfo): Unit = {
 
     this.executorDriver = driver
     val data = mapper.readValue(new ByteArrayInputStream(executorInfo.getData.toByteArray), classOf[ExecData])
@@ -72,7 +69,7 @@ class ActionsExecutor extends Executor with Logging {
 
   }
 
-  override def launchTask(driver: ExecutorDriver, taskInfo: TaskInfo) = {
+  override def launchTask(driver: ExecutorDriver, taskInfo: TaskInfo): Unit = {
 
     notifier.info(s"launching task: ${taskInfo.getTaskId.getValue}")
     log.debug(s"launching task: $taskInfo")
@@ -85,8 +82,6 @@ class ActionsExecutor extends Executor with Logging {
     val task = Future {
 
       val taskData = mapper.readValue(new ByteArrayInputStream(taskInfo.getData.toByteArray), classOf[TaskData])
-
-      val actionSource = taskData.src
 
       val status = TaskStatus.newBuilder
         .setTaskId(taskInfo.getTaskId)
@@ -105,17 +100,15 @@ class ActionsExecutor extends Executor with Logging {
     }
 
     task onComplete {
-      case Failure(t) => {
+      case Failure(t) =>
         println(s"launching task failed: ${t.getMessage}")
         System.exit(1)
-      }
-      case Success(ts) => {
-
-        driver.sendStatusUpdate(TaskStatus.newBuilder()
+      case Success(ts) =>
+        driver.sendStatusUpdate(TaskStatus.newBuilder
           .setTaskId(taskInfo.getTaskId)
-          .setState(TaskState.TASK_FINISHED).build())
+          .setState(TaskState.TASK_FINISHED).build)
         notifier.info(s"complete task: ${taskInfo.getTaskId.getValue}")
-      }
+
     }
 
   }

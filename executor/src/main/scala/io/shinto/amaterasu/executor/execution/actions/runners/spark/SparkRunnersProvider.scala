@@ -22,11 +22,11 @@ import scala.collection.concurrent.TrieMap
 /**
   * Created by roadan on 2/9/17.
   */
-class SparkRunnersProvider extends RunnersProvider {// with Logging {
+class SparkRunnersProvider extends RunnersProvider with Logging {
 
   private val runners = new TrieMap[String, AmaterasuRunner]
 
-  override def init(data: ExecData, jobId: String, outStream: ByteArrayOutputStream, notifier: Notifier, executorId: String) = {
+  override def init(data: ExecData, jobId: String, outStream: ByteArrayOutputStream, notifier: Notifier, executorId: String): Unit = {
 
     var jars = Seq[String]()
     if (data.deps != null) {
@@ -39,7 +39,7 @@ class SparkRunnersProvider extends RunnersProvider {// with Logging {
     //log.debug(s"creating SparkContext with master ${data.env.master}")
     val sparkContext = SparkRunnerHelper.createSparkContext(data.env, sparkAppName, classServerUri, jars)
 
-    val sparkScalaRunner = SparkScalaRunner(data.env, jobId, sparkContext, outStream, notifier, jars)
+    val sparkScalaRunner = SparkScalaRunner(data.env, jobId, sparkContext, outStream, notifier, jars, data.exports)
     sparkScalaRunner.initializeAmaContext(data.env)
 
     runners.put(sparkScalaRunner.getIdentifier, sparkScalaRunner)
@@ -52,7 +52,7 @@ class SparkRunnersProvider extends RunnersProvider {// with Logging {
 
   override def getRunner(id: String): AmaterasuRunner = {
 
-    runners.get(id).get
+    runners(id)
 
   }
 

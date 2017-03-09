@@ -37,7 +37,7 @@ object DataLoader extends Logging {
 
   }
 
-  def getExecutorData(env: String): ByteString = {
+  def getExecutorData(env: String, exports: Map[String, String]): ByteString = {
 
     val ymlMapper = new ObjectMapper(new YAMLFactory())
     ymlMapper.registerModule(DefaultScalaModule)
@@ -52,7 +52,7 @@ object DataLoader extends Logging {
       depsData = ymlMapper.readValue(depsValue, classOf[Dependencies])
     }
 
-    val data = mapper.writeValueAsBytes(new ExecData(envData, depsData))
+    val data = mapper.writeValueAsBytes(new ExecData(envData, depsData, exports))
     ByteString.copyFrom(data)
   }
 

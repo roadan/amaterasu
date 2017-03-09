@@ -32,12 +32,12 @@ import scala.collection.concurrent.TrieMap
   */
 class JobScheduler extends AmaterasuScheduler {
 
-  private var jobManager: JobManager = null
-  private var client: CuratorFramework = null
-  private var config: ClusterConfig = null
-  private var src: String = null
-  private var env: String = null
-  private var branch: String = null
+  private var jobManager: JobManager = _
+  private var client: CuratorFramework = _
+  private var config: ClusterConfig = _
+  private var src: String = _
+  private var env: String = _
+  private var branch: String = _
   private var resume: Boolean = false
   private var reportLevel: NotificationLevel = _
 
@@ -63,7 +63,7 @@ class JobScheduler extends AmaterasuScheduler {
 
   def disconnected(driver: SchedulerDriver) {}
 
-  def frameworkMessage(driver: SchedulerDriver, executorId: ExecutorID, slaveId: SlaveID, data: Array[Byte]) = {
+  def frameworkMessage(driver: SchedulerDriver, executorId: ExecutorID, slaveId: SlaveID, data: Array[Byte]): Unit = {
 
     val notification = mapper.readValue(data, classOf[Notification])
 
@@ -77,7 +77,7 @@ class JobScheduler extends AmaterasuScheduler {
 
   }
 
-  def statusUpdate(driver: SchedulerDriver, status: TaskStatus) = {
+  def statusUpdate(driver: SchedulerDriver, status: TaskStatus): Unit = {
 
     status.getState match {
       case TaskState.TASK_RUNNING => jobManager.actionStarted(status.getTaskId.getValue)
@@ -99,9 +99,9 @@ class JobScheduler extends AmaterasuScheduler {
       resources.count(r => r.getName == "mem" && r.getScalar.getValue >= config.Jobs.Tasks.mem) > 0
   }
 
-  def offerRescinded(driver: SchedulerDriver, offerId: OfferID) = {
+  def offerRescinded(driver: SchedulerDriver, offerId: OfferID): Unit = {
 
-    val actionId = offersToTaskIds.get(offerId.getValue).get
+    val actionId = offersToTaskIds(offerId.getValue)
     jobManager.reQueueAction(actionId)
 
   }
@@ -131,7 +131,7 @@ class JobScheduler extends AmaterasuScheduler {
             // on a slave level to efficiently handle slave loses
             executionMap.putIfAbsent(offer.getSlaveId.toString, new ConcurrentHashMap[String, ActionStatus].asScala)
 
-            val slaveActions = executionMap.get(offer.getSlaveId.toString).get
+            val slaveActions = executionMap(offer.getSlaveId.toString)
             slaveActions.put(taskId.getValue, ActionStatus.started)
 
             // searching for an executor that already exist on the slave, if non exist
@@ -166,7 +166,7 @@ class JobScheduler extends AmaterasuScheduler {
 
                 executor = ExecutorInfo
                   .newBuilder
-                  .setData(DataLoader.getExecutorData(env))
+                  .setData(DataLoader.getExecutorData(env, actionData.exports))
                   .setName(taskId.getValue)
                   .setExecutorId(ExecutorID.newBuilder().setValue(taskId.getValue + "-" + UUID.randomUUID()))
                   .setCommand(command)
@@ -248,7 +248,7 @@ class JobScheduler extends AmaterasuScheduler {
 
   def reregistered(driver: SchedulerDriver, masterInfo: Protos.MasterInfo) {}
 
-  def printNotification(notification: Notification) = {
+  def printNotification(notification: Notification): Unit = {
 
     var color = Console.WHITE
 

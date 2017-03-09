@@ -10,6 +10,7 @@ case class ActionData(var status: ActionStatus,
                       groupId: String,
                       typeId: String,
                       id: String,
-                      nextActionIds: ListBuffer[String]) {
+                      nextActionIds: ListBuffer[String],
+                      exports: Map[String, String]) {
   var errorActionId: String = null
 }
